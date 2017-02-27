@@ -152,6 +152,14 @@ class TweenX extends CommandX {
         for (t in _addedTweens) { t._init(); }
         _addedTweens.splice(0, _addedTweens.length);
     }
+	
+	/**
+	 * TODO: now this function is pretty dangerous, 
+	 * review the case where it can be called while iterating 
+	 * thru _tweens or _addedTweens
+	 * 
+	 * May be it is a good idea to make a _lock to prevent clearing while iterating
+	 */
     public static function clear(nonRetainedOnly = false) {
 		
 		if (nonRetainedOnly)
@@ -181,16 +189,20 @@ class TweenX extends CommandX {
 		}	
     }
 	
-	public static function stopAllLabeled(label:String, nonRetainedOnly = false)
+	/**
+	 * Stops all tweens labeled 'label'
+	 * @param	label
+	 */
+	public static function stopAllLabeled(label:String)
 	{
 		for (t in _addedTweens) 
 		{
-			if ((!nonRetainedOnly || !t._retained) && t._label == label)
+			if (t._label == label)
 				t._autoPlay = false; 			
 		} 
 		
 		for (t in tweens)
-			if ((!nonRetainedOnly || !t._retained) && t._label == label)
+			if (t._label == label)
 				switch(t.command) {
 					case WAIT(_):
 					case TWEEN(o):
@@ -222,14 +234,19 @@ class TweenX extends CommandX {
 			}
 	}
 	
+	/**
+	 * Checks if a target is indeed a direct target of tween
+	 * @param	target
+	 * @param	tween
+	 */
 	static function isDirectTargetOf(target:Dynamic, tween:TweenX)
 	{
 		return switch (tween._type)
 		{
 			case GROUP(group): 
-				false;
+				group == target;
 			case ARRAY(targets, from, to): 
-				false;
+				targets == target;
 			case FROM_TO(t, from, to): 
 				t == target;
 			case FUNC(f, from, to):
