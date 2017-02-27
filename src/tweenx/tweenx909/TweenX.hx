@@ -66,8 +66,9 @@ class TweenX extends CommandX {
     private static var _rules:Array<RuleX<Dynamic,Dynamic>>             = [BoolRuleX, ArrayRuleX, TimelineRuleX, ArgbRuleX, AhsvRuleX, RgbRuleX, HsvRuleX, QuakeRuleX];
     public static var rules(#if haxe3 get #else get_rules #end, never):Iterable<RuleX<Dynamic,Dynamic>>;
     private static function get_rules():Iterable<RuleX<Dynamic,Dynamic>> { return _rules; }
-
-
+	
+	public static var label:String = null;
+	
     static public var topLevelTimeScale:Float                            = 1;
     private static var _groupDefaults:Bool                                 = false;
 
@@ -134,7 +135,10 @@ class TweenX extends CommandX {
         #end
     }
 
-    public static function manualUpdate(time:Float #if (tweenx_debug) ,?posInfo:PosInfos #end) {
+    public static function manualUpdate(time:Float #if (tweenx_debug) , ?posInfo:PosInfos #end) {
+		if (label != null)
+			throw "TweenX.label was not set back to null";
+		
         initTweens();
         var l = _tweens.length, i = 0;
         while (i < l){
@@ -148,10 +152,93 @@ class TweenX extends CommandX {
         for (t in _addedTweens) { t._init(); }
         _addedTweens.splice(0, _addedTweens.length);
     }
-    public static function clear() {
-        for (t in _addedTweens) { t._autoPlay = false; }
-        stopAll(tweens);
+    public static function clear(nonRetainedOnly = false) {
+		
+		if (nonRetainedOnly)
+		{
+			var i = _addedTweens.length;
+			while (i-- > 0)
+			{
+				var t = _addedTweens[i];
+				if (!nonRetainedOnly || !t._retained)
+					_addedTweens.splice(i, 1);
+			}
+			
+			var i = _tweens.length;
+			while (i-- > 0)
+			{
+				var t = _tweens[i];
+				if (!nonRetainedOnly || !t._retained)
+					switch(t.command) {
+						case WAIT(_):
+						case TWEEN(o):
+							_tweens.splice(i, 1);
+					} 
+			}
+		} else {
+			_tweens = [];
+			_addedTweens = [];
+		}	
     }
+	
+	public static function stopAllLabeled(label:String, nonRetainedOnly = false)
+	{
+		for (t in _addedTweens) 
+		{
+			if ((!nonRetainedOnly || !t._retained) && t._label == label)
+				t._autoPlay = false; 			
+		} 
+		
+		for (t in tweens)
+			if ((!nonRetainedOnly || !t._retained) && t._label == label)
+				switch(t.command) {
+					case WAIT(_):
+					case TWEEN(o):
+						o.stop();
+				} 
+	}
+	
+	/**
+	 * Stops all tweens where target is a direct target
+	 * @param	target
+	 * @param	resetProperties
+	 */
+	public static function stopTweensOf(target:Dynamic, resetProperties:Bool = false)
+	{		
+		for (tween in TweenX._addedTweens) 
+			if (isDirectTargetOf(target, tween))
+				tween._autoPlay = false; 
+			
+		for (tween in TweenX.tweens)			
+			switch(tween.command) {
+				case WAIT(_):
+				case TWEEN(o):
+					if (isDirectTargetOf(target, tween))
+					{
+						if (resetProperties)
+							tween.goto(0, false);
+						o.stop();
+					}
+			}
+	}
+	
+	static function isDirectTargetOf(target:Dynamic, tween:TweenX)
+	{
+		return switch (tween._type)
+		{
+			case GROUP(group): 
+				false;
+			case ARRAY(targets, from, to): 
+				false;
+			case FROM_TO(t, from, to): 
+				t == target;
+			case FUNC(f, from, to):
+				f == target;
+			case CALL(f):	
+				f == target;
+		}
+	
+	}
 
     /*
      * 変則ルールの管理
@@ -214,11 +301,11 @@ class TweenX extends CommandX {
     }
     public static function stopAll(tweens:Iterable<TweenX>){
         for (t in tweens)
-            switch(t.command) {
-                case WAIT(_):
-                case TWEEN(o):
-                    o.stop();
-            }
+				switch(t.command) {
+					case WAIT(_):
+					case TWEEN(o):
+						o.stop();
+				}
     }
     public static function gotoAll(tweens:Iterable<TweenX>, time:Float = 0, andPlay:Bool = false 
         #if (tweenx_debug), ?posInfo:PosInfos #end
@@ -419,6 +506,8 @@ class TweenX extends CommandX {
         _eventListeners = [];
 
         id = idCounter++;
+		
+		_label = TweenX.label;
         TweenX._addedTweens.push(this);
         if (! TweenX.managerInited) { TweenX.initManager(); }
     }
@@ -438,6 +527,8 @@ class TweenX extends CommandX {
     private var _parent:TweenX;
     private var _fastMode:Bool;
     private var _toKeys:Array<String>;
+	private var _retained:Bool = false;
+	private var _label:String = null;
 
 
     /*
@@ -547,6 +638,13 @@ class TweenX extends CommandX {
         _stop();
         return this;
     }
+	
+	public function retain(retained = true)
+	{
+		this._retained = retained;
+		return this;
+	}
+	
     private function _stop() {
         if (! playing) return;
         playing = false;
