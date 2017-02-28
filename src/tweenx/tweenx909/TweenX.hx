@@ -301,7 +301,7 @@ class TweenX extends CommandX {
         return new TweenX(FUNC(func, [from1,from2,from3,from4], [to1,to2,to3,to4]), time, ease, delay, repeat, yoyo, zigzag, interval, autoPlay, posInfos);
     }
     public static function func(func:Void->Void, ?delay:Float, ?repeat:Int, ?interval:Float, ?posInfos:PosInfos) {
-        return new TweenX(CALL(func), 0, EaseX.linear, delay, repeat, false, false, interval, false, posInfos);
+        return new TweenX(CALL(func), 0, EaseX.linear, delay, repeat, false, false, interval, true, posInfos);
     }
 
 
