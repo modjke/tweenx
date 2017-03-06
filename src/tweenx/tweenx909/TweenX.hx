@@ -1,5 +1,6 @@
 package tweenx909;
 
+import de.polygonal.ds.List;
 import haxe.PosInfos;
 import haxe.Timer;
 import tweenx909.EaseX;
@@ -29,11 +30,23 @@ class TweenX extends CommandX {
     /*
      * 全体情報
      */
-    private static var _tweens:Array<TweenX>                        = new Array<TweenX>();
-    private static var _addedTweens:Array<TweenX>                    = new Array<TweenX>();
-    public static var tweens(#if haxe3 get #else get_tweens #end, never):Iterable<TweenX>;
-    private static function get_tweens():Iterable<TweenX> { return _tweens; }
-
+	
+	static var list:TweenListX = new TweenListX();
+	static var lists:Array<TweenListX> = [list];
+	
+	public static function pushList(list:TweenListX)
+	{		
+		TweenX.list = list;
+		lists.push(list);
+	}
+	
+	public static function popList(?check:TweenListX)
+	{
+		var removed = lists.pop();		
+		if (check != null && check != removed)
+			throw "List check failed";
+	}
+	
     /*
      * マネージャ基本値
      */
@@ -66,8 +79,6 @@ class TweenX extends CommandX {
     private static var _rules:Array<RuleX<Dynamic,Dynamic>>             = [BoolRuleX, ArrayRuleX, TimelineRuleX, ArgbRuleX, AhsvRuleX, RgbRuleX, HsvRuleX, QuakeRuleX];
     public static var rules(#if haxe3 get #else get_rules #end, never):Iterable<RuleX<Dynamic,Dynamic>>;
     private static function get_rules():Iterable<RuleX<Dynamic,Dynamic>> { return _rules; }
-	
-	public static var label:String = null;
 	
     static public var topLevelTimeScale:Float                            = 1;
     private static var _groupDefaults:Bool                                 = false;
@@ -136,78 +147,47 @@ class TweenX extends CommandX {
     }
 
     public static function manualUpdate(time:Float #if (tweenx_debug) , ?posInfo:PosInfos #end) {
-		if (label != null)
-			throw "TweenX.label was not set back to null";
-		
-        initTweens();
-        var l = _tweens.length, i = 0;
-        while (i < l){
-            var t = _tweens[i++];
-            t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);
-            if (!t.playing) { _tweens.splice(--i, 1); l--; }
-        }
+		for (l in lists) {
+			if (l.update)
+				updateList(time, l);
+		}
+
         _resetLog();
     }
-    private static function initTweens() {
-        for (t in _addedTweens) { t._init(); }
-        _addedTweens.splice(0, _addedTweens.length);
-    }
+	
+	static function updateList(time:Float, list:TweenListX)
+	{
+		//init tweens
+        for (t in list.added) { t._init(); }
+        list.added.splice(0, list.added.length);
+		
+		//update tweens
+        var l = list.tweens.length, i = 0;
+        while (i < l){
+            var t = list.tweens[i++];
+            t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);
+            if (!t.playing) { list.tweens.splice(--i, 1); l--; }
+        }
+	}
 	
 	/**
 	 * TODO: now this function is pretty dangerous, 
 	 * review the case where it can be called while iterating 
 	 * thru _tweens or _addedTweens
 	 * 
-	 * May be it is a good idea to make a _lock to prevent clearing while iterating
+	 * May be it is a good idea to make a lock to prevent clearing while iterating
 	 */
-    public static function clear(nonRetainedOnly = false) {
+    public static function clear() {
 		
-		if (nonRetainedOnly)
-		{
-			var i = _addedTweens.length;
-			while (i-- > 0)
-			{
-				var t = _addedTweens[i];
-				if (!nonRetainedOnly || !t._retained)
-					_addedTweens.splice(i, 1);
-			}
-			
-			var i = _tweens.length;
-			while (i-- > 0)
-			{
-				var t = _tweens[i];
-				if (!nonRetainedOnly || !t._retained)
-					switch(t.command) {
-						case WAIT(_):
-						case TWEEN(o):
-							_tweens.splice(i, 1);
-					} 
-			}
-		} else {
-			_tweens = [];
-			_addedTweens = [];
-		}	
+		for (l in lists) 
+			clearList(l);
     }
 	
-	/**
-	 * Stops all tweens labeled 'label'
-	 * @param	label
-	 */
-	public static function stopAllLabeled(label:String)
+	public static function clearList(list:TweenListX)
 	{
-		for (t in _addedTweens) 
-		{
-			if (t._label == label)
-				t._autoPlay = false; 			
-		} 
+		list.added.splice(0, list.added.length);
+		list.tweens.splice(0, list.tweens.length);
 		
-		for (t in tweens)
-			if (t._label == label)
-				switch(t.command) {
-					case WAIT(_):
-					case TWEEN(o):
-						o.stop();
-				} 
 	}
 	
 	/**
@@ -217,11 +197,11 @@ class TweenX extends CommandX {
 	 */
 	public static function stopTweensOf(target:Dynamic, resetProperties:Bool = false)
 	{		
-		for (tween in TweenX._addedTweens) 
+		for (tween in list.added) 
 			if (isDirectTargetOf(target, tween))
 				tween._autoPlay = false; 
 			
-		for (tween in TweenX.tweens)			
+		for (tween in list.tweens)			
 			switch(tween.command) {
 				case WAIT(_):
 				case TWEEN(o):
@@ -502,6 +482,7 @@ class TweenX extends CommandX {
     function new(type:TweenTypeX, ?time:Float, ?ease:Float->Float, ?delay:Float, ?repeat:Int, ?yoyo:Bool, ?zigzag:Bool, ?interval:Float, ?autoPlay:Bool, ?posInfos:PosInfos) {
         super(TWEEN(this), posInfos);
         this._type = type;
+		_list = TweenX.list;
 
         _currentTime        = 0;
         switch(type) {
@@ -524,8 +505,8 @@ class TweenX extends CommandX {
 
         id = idCounter++;
 		
-		_label = TweenX.label;
-        TweenX._addedTweens.push(this);
+		_list.added.push(this);
+		
         if (! TweenX.managerInited) { TweenX.initManager(); }
     }
 
@@ -544,10 +525,7 @@ class TweenX extends CommandX {
     private var _parent:TweenX;
     private var _fastMode:Bool;
     private var _toKeys:Array<String>;
-	private var _retained:Bool = false;
-	private var _label:String = null;
-
-
+	private var _list:TweenListX;
     /*
      * プロパティ
      */
@@ -642,7 +620,7 @@ class TweenX extends CommandX {
         if (! _inited) _init();
 
         playing = true;
-        _tweens.push(this);
+        _list.tweens.push(this);
 
         #if (tweenx_debug) _updatePosInfo = posInfo; #end
         dispatch(_PLAY);
@@ -656,9 +634,22 @@ class TweenX extends CommandX {
         return this;
     }
 	
-	public function retain(retained = true)
+	public function nonLocal(nonLocal = true)
 	{
-		this._retained = retained;
+		if (list != lists[0]) 
+		{
+			var from = nonLocal ? list : lists[0];		
+			var to = nonLocal ? lists[0] : list;
+							
+			if (from.added.remove(this))			
+				to.added.push(this);
+				
+			if (from.tweens.remove(this))
+				to.tweens.push(this);
+				
+			_list = to;
+		}
+		
 		return this;
 	}
 	
