@@ -1,6 +1,5 @@
 package tweenx909;
 
-import de.polygonal.ds.List;
 import haxe.PosInfos;
 import haxe.Timer;
 import tweenx909.EaseX;
@@ -45,6 +44,8 @@ class TweenX extends CommandX {
 		var removed = lists.pop();		
 		if (check != null && check != removed)
 			throw "List check failed";
+			
+		TweenX.list = lists[lists.length - 1];
 	}
 	
     /*
@@ -634,20 +635,29 @@ class TweenX extends CommandX {
         return this;
     }
 	
-	public function nonLocal(nonLocal = true)
+	/**
+	 * Moves tween to the global tween list
+	 */
+	public function global()
 	{
-		if (list != lists[0]) 
-		{
-			var from = nonLocal ? list : lists[0];		
-			var to = nonLocal ? lists[0] : list;
-							
-			if (from.added.remove(this))			
-				to.added.push(this);
+		return local(lists[0]);
+	}
+	
+	/**
+	 * Moves tween to the specified list
+	 * @param	list
+	 */
+	public function local(list:TweenListX)
+	{
+		if (list != _list) 
+		{						
+			if (_list.added.remove(this))			
+				list.added.push(this);
 				
-			if (from.tweens.remove(this))
-				to.tweens.push(this);
+			if (_list.tweens.remove(this))
+				list.tweens.push(this);
 				
-			_list = to;
+			_list = list;
 		}
 		
 		return this;
