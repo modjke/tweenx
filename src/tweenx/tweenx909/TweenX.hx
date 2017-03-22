@@ -156,7 +156,7 @@ class TweenX extends CommandX {
         _resetLog();
     }
 	
-	static function updateList(time:Float, list:TweenListX)
+	static function updateList(time:Float, list:TweenListX #if (tweenx_debug) , ?posInfo:PosInfos #end)
 	{
 		//init tweens
         for (t in list.added) { t._init(); }
@@ -166,8 +166,14 @@ class TweenX extends CommandX {
         var l = list.tweens.length, i = 0;
         while (i < l){
             var t = list.tweens[i++];
-            t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);
-            if (!t.playing) { list.tweens.splice(--i, 1); l--; }
+			
+			if (t.playing)
+				t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);         
+			else 
+			{ 
+				list.tweens.splice(--i, 1); 
+				l--; 				
+			}
         }
 	}
 	
@@ -671,7 +677,7 @@ class TweenX extends CommandX {
     }
 
     public function update(time:Float #if (tweenx_debug) ,?posInfo:PosInfos #end) {
-        if (_parent != null) throw error("Can't stop serialized object directly");
+        if (_parent != null) throw error("Can't update serialized object directly");
         _update(time * timeScale * TweenX.topLevelTimeScale #if (tweenx_debug) ,posInfo #end);
         return this;
     }
@@ -742,7 +748,7 @@ class TweenX extends CommandX {
 
         _singleTime    = get_singleTime();
         _totalTime     = get_totalTime();
-
+		
         if (_autoPlay) { play(); }
     }
 
@@ -781,8 +787,6 @@ class TweenX extends CommandX {
         this._currentTime = _currentTime     += spent;
         position    += spent;
         body        += spent;
-
-
 
         //delayのチェック
         if (_currentTime - delay < _MIN) {
@@ -1115,10 +1119,10 @@ class TweenX extends CommandX {
     }
     private inline function dispatch(num:Int) {
         #if (tweenx_debug)
-        if (num){
+        if (num > -1){
             var action = EVENT_ARRAY[num];
             var p = definedPosInfos;
-            #if (tweenx_debug_hide_update) if (action != "UPDATE") #end
+            #if (tweenx_debug_hide_update) if (action != "update") #end
             haxe.Log.trace("Tween_" + id + "(generated at " + p.className + "/" + p.methodName + "()[" + p.fileName + ":" + p.lineNumber + "]) " + action, _updatePosInfo);
         }
         #end
