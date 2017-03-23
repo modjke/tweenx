@@ -7,7 +7,7 @@ class TweenListX
 	public var update:Bool = true;
 	var tweens:Array<TweenX> = [];
 	var added:Array<TweenX> = [];
-	
+
 	public function new() 
 	{
 		

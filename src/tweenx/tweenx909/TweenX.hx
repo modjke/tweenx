@@ -30,24 +30,10 @@ class TweenX extends CommandX {
      * 全体情報
      */
 	
-	static var list:TweenListX = new TweenListX();
-	static var lists:Array<TweenListX> = [list];
+	public static var defaultList:TweenListX = new TweenListX();
+	public static var lists = [defaultList];
 	
-	public static function pushList(list:TweenListX)
-	{		
-		TweenX.list = list;
-		lists.push(list);
-	}
-	
-	public static function popList(?check:TweenListX)
-	{
-		var removed = lists.pop();		
-		if (check != null && check != removed)
-			throw "List check failed";
-			
-		TweenX.list = lists[lists.length - 1];
-	}
-	
+
     /*
      * マネージャ基本値
      */
@@ -147,17 +133,21 @@ class TweenX extends CommandX {
         #end
     }
 
+	static var _updateLock = false;
     public static function manualUpdate(time:Float #if (tweenx_debug) , ?posInfo:PosInfos #end) {
-		for (l in lists) {
+		_updateLock = true;
+		
+		for (l in lists)
 			if (l.update)
-				updateList(time, l);
-		}
-
+				updateList(time, l);			
+			
+		_updateLock = false;
+		
         _resetLog();
     }
 	
-	static function updateList(time:Float, list:TweenListX #if (tweenx_debug) , ?posInfo:PosInfos #end)
-	{
+	public static function updateList(time:Float, list:TweenListX #if (tweenx_debug) , ?posInfo:PosInfos #end)
+	{	
 		//init tweens
         for (t in list.added) { t._init(); }
         list.added.splice(0, list.added.length);
@@ -178,23 +168,26 @@ class TweenX extends CommandX {
 	}
 	
 	/**
-	 * TODO: now this function is pretty dangerous, 
-	 * review the case where it can be called while iterating 
-	 * thru _tweens or _addedTweens
-	 * 
-	 * May be it is a good idea to make a lock to prevent clearing while iterating
+	 * Stop every tween in the list and supress any STOP event
+	 * @param	list
 	 */
-    public static function clear() {
-		
-		for (l in lists) 
-			clearList(l);
-    }
+	public static function stopListImmidiate(list:TweenListX)
+	{
+		for (t in list.added) t._autoPlay = false;
+		for (t in list.tweens) t.playing = false;		
+	}
 	
+	/**
+	 * This is unsafe :(
+	 * Use stopListImmidiate instead
+	 * @param	list
+	 */
+	@:deprecated
 	public static function clearList(list:TweenListX)
 	{
+		if (_updateLock) throw "Clearing on update!";
 		list.added.splice(0, list.added.length);
-		list.tweens.splice(0, list.tweens.length);
-		
+		list.tweens.splice(0, list.tweens.length);		
 	}
 	
 	/**
@@ -202,23 +195,22 @@ class TweenX extends CommandX {
 	 * @param	target
 	 * @param	resetProperties
 	 */
-	public static function stopTweensOf(target:Dynamic, resetProperties:Bool = false)
+	public static function stopTweensOf(target:Dynamic )
 	{		
-		for (tween in list.added) 
-			if (isDirectTargetOf(target, tween))
-				tween._autoPlay = false; 
-			
-		for (tween in list.tweens)			
-			switch(tween.command) {
-				case WAIT(_):
-				case TWEEN(o):
-					if (isDirectTargetOf(target, tween))
-					{
-						if (resetProperties)
-							tween.goto(0, false);
-						o.stop();
-					}
-			}
+		for (l in lists)
+		{
+			for (tween in l.added) 
+				if (isDirectTargetOf(target, tween))
+					tween._autoPlay = false; 
+				
+			for (tween in l.tweens)			
+				switch(tween.command) {
+					case WAIT(_):
+					case TWEEN(o):
+						if (isDirectTargetOf(target, tween))
+							tween.playing = false;
+				}
+		}
 	}
 	
 	/**
@@ -489,7 +481,7 @@ class TweenX extends CommandX {
     function new(type:TweenTypeX, ?time:Float, ?ease:Float->Float, ?delay:Float, ?repeat:Int, ?yoyo:Bool, ?zigzag:Bool, ?interval:Float, ?autoPlay:Bool, ?posInfos:PosInfos) {
         super(TWEEN(this), posInfos);
         this._type = type;
-		_list = TweenX.list;
+		_list = TweenX.defaultList;
 
         _currentTime        = 0;
         switch(type) {
@@ -642,28 +634,33 @@ class TweenX extends CommandX {
     }
 	
 	/**
-	 * Moves tween to the global tween list
-	 */
-	public function global()
-	{
-		return local(lists[0]);
-	}
-	
-	/**
 	 * Moves tween to the specified list
 	 * @param	list
 	 */
-	public function local(list:TweenListX)
+	public function list(l:TweenListX)
 	{
-		if (list != _list) 
+		if (l != _list) 
 		{						
 			if (_list.added.remove(this))			
-				list.added.push(this);
+				l.added.push(this);
 				
 			if (_list.tweens.remove(this))
-				list.tweens.push(this);
+				l.tweens.push(this);
 				
-			_list = list;
+			_list = l;
+		}
+		
+		switch (_type)
+		{ 
+			case GROUP(g):
+				for (t in g.source) 
+					switch (t.command)
+					{
+						case TWEEN(t):
+							t.list(l);
+						case WAIT(_):
+					}
+			case _:
 		}
 		
 		return this;
