@@ -195,7 +195,7 @@ class TweenX extends CommandX {
 	 * @param	target
 	 * @param	resetProperties
 	 */
-	public static function stopTweensOf(target:Dynamic )
+	public static function stopTweensOf(target:Dynamic)
 	{		
 		for (l in lists)
 		{
@@ -211,6 +211,7 @@ class TweenX extends CommandX {
 							tween.playing = false;
 				}
 		}
+				
 	}
 	
 	/**
