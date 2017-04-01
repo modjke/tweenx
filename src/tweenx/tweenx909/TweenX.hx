@@ -204,14 +204,14 @@ class TweenX extends CommandX {
 		{
 			for (tween in l.added) 
 				if (isDirectTargetOf(target, tween))
-					tween._autoPlay = false; 
+					tween._stoppedImmidiately = true;
 				
 			for (tween in l.tweens)			
 				switch(tween.command) {
 					case WAIT(_):
 					case TWEEN(o):
 						if (isDirectTargetOf(target, tween))
-							tween.playing = false;
+							tween._stoppedImmidiately = true;
 				}
 		}
 				
