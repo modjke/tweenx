@@ -150,7 +150,7 @@ class TweenX extends CommandX {
 	{	
 		//init tweens
 		for (t in list.added) 
-			if (!t._stoppedImmidiately)
+			if (!t._killed)
 				t._init();
 				
         list.added.splice(0, list.added.length);
@@ -160,7 +160,7 @@ class TweenX extends CommandX {
         while (i < l){
             var t = list.tweens[i++];
 			
-			if (t.playing && !t._stoppedImmidiately)
+			if (t.playing && !t._killed)
 				t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);         
 			else 
 			{ 
@@ -176,8 +176,8 @@ class TweenX extends CommandX {
 	 */
 	public static function stopListImmidiate(list:TweenListX)
 	{
-		for (t in list.added) t._stoppedImmidiately = true;
-		for (t in list.tweens) t._stoppedImmidiately = true;
+		for (t in list.added) t._killed = true;
+		for (t in list.tweens) t._killed = true;
 	}
 	
 	/**
@@ -198,20 +198,20 @@ class TweenX extends CommandX {
 	 * @param	target
 	 * @param	resetProperties
 	 */
-	public static function stopTweensOf(target:Dynamic)
+	public static function killTweensOf(target:Dynamic)
 	{		
 		for (l in lists)
 		{
 			for (tween in l.added) 
 				if (isDirectTargetOf(target, tween))
-					tween._stoppedImmidiately = true;
+					tween._killed = true;
 				
 			for (tween in l.tweens)			
 				switch(tween.command) {
 					case WAIT(_):
 					case TWEEN(o):
 						if (isDirectTargetOf(target, tween))
-							tween._stoppedImmidiately = true;
+							tween._killed = true;
 				}
 		}
 				
@@ -524,7 +524,7 @@ class TweenX extends CommandX {
     private var _type:TweenTypeX;
     private var _inited:Bool;
     private var _totalTime:Float;
-    private var _stoppedImmidiately:Bool;
+    private var _killed:Bool;
     private var _parent:TweenX;
     private var _fastMode:Bool;
     private var _toKeys:Array<String>;
