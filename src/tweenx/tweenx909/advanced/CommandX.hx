@@ -7,6 +7,7 @@ class CommandX {
     public var command            (default, null):CommandTypeX;
     public var definedPosInfos(default, null):PosInfos;
     function new (command:CommandTypeX, ?posInfos:PosInfos) {
-        this.command = command; this.definedPosInfos = posInfos;
+        this.command = command; 
+		this.definedPosInfos = posInfos;
     }
 }

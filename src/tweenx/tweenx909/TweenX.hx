@@ -151,7 +151,18 @@ class TweenX extends CommandX {
 		//init tweens
 		for (t in list.added) 
 			if (!t._killed)
+			{
+				#if tweenx_exceptions
+				try {
+				#end
 				t._init();
+				#if tweenx_exceptions
+				} catch (exception:Dynamic)
+				{
+					throw new TweenXException(INIT, t, exception);
+				}
+				#end
+			}
 				
         list.added.splice(0, list.added.length);
 		
@@ -161,7 +172,18 @@ class TweenX extends CommandX {
             var t = list.tweens[i++];
 			
 			if (t.playing && !t._killed)
-				t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) ,posInfo #end);         
+			{
+				#if tweenx_exceptions
+				try {
+				#end
+				t._update(time * t.timeScale * topLevelTimeScale #if (tweenx_debug) , posInfo #end);
+				#if tweenx_exceptions
+				} catch (exception:Dynamic)
+				{
+					throw new TweenXException(UPDATE, t, exception);
+				}
+				#end
+			}
 			else 
 			{ 
 				list.tweens.splice(--i, 1); 
