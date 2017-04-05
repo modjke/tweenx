@@ -150,7 +150,7 @@ class TweenX extends CommandX {
 	{	
 		//init tweens
 		for (t in list.added) 
-			if (!t._killed)
+			if (t._autoPlay && !t._killed)
 			{
 				#if tweenx_exceptions
 				try {
