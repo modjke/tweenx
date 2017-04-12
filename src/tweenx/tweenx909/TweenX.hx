@@ -705,16 +705,32 @@ class TweenX extends CommandX {
         return this;
     }
 
+	/**
+	 * TODO: fix 
+	 * calling goto(totalTime, true) will dispatch onFinish twice
+	 * goto is buggy for TweenX lag tweens, calling goto(totalTime, false) some times causes tween to update immidiately and 
+	 * update one more time in updateList()
+	 */
     public function goto(time:Float = 0, andPlay:Bool = false #if (tweenx_debug) ,?posInfo:PosInfos #end) {
         if (_parent != null) throw error("Can't move serialized object directly");
         if (! _inited) { _init(); }
         var t = time;
         if (t < 0) t = 0;
         else if (t > _totalTime) t = _totalTime;
+		
         _update(t - currentTime);
+		
+		
+		
         if (andPlay) { play(#if (tweenx_debug) posInfo #end); }
+		
         return this;
     }
+	
+	public function kill()
+	{
+		_killed = true;
+	}
 
     private function _invert(){
         _currentTime = _totalTime - _currentTime;
