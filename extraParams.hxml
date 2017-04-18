@@ -1,0 +1,2 @@
+--macro haxe.macro.Compiler.addClassPath("src/tweenx")
+--macro haxe.macro.Compiler.addClassPath("src/tweenxcore")

@@ -1,0 +1,11 @@
+{
+  "name": "tweenx+",
+  "url" : "https://github.com/modjke/tweenx",
+  "license": "MIT",
+  "tags": ["flash", "cpp", "js", "neko", "tween"],
+  "description": "crossplatform tween library (forked from https://github.com/shohei909/tweenx)",
+  "version": "1.0.0",
+  "releasenote": "tweenx with tweenxcore included, installable via hxmlinstall",
+  "contributors": ["shohei909", "modjke"],
+  "dependencies": {}
+}
