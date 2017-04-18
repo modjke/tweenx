@@ -7,5 +7,6 @@
   "version": "1.0.0",
   "releasenote": "tweenx with tweenxcore included, installable via hxmlinstall",
   "contributors": ["shohei909", "modjke"],
+  "classPath": "src",
   "dependencies": {}
 }
