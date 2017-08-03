@@ -1,4 +1,4 @@
-package tweenx909.tween;
+package tweenx909;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
